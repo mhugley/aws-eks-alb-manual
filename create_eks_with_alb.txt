@@ -1,0 +1,33 @@
+Creating a Cluster with Application Load Balancer
+
+eksctl create cluster -f eks-cluster.yaml
+eksctl utils associate-iam-oidc-provider --region us-east-1 --cluster my-cluster --approve
+curl -o iam-policy.json https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.2.1/docs/install/iam_policy.json
+aws iam create-policy --policy-name AWSLoadBalancerControllerIAMPolicy --policy-document file://iam-policy.json
+eksctl create iamserviceaccount --cluster=my-cluster --namespace=kube-system --name=aws-load-balancer-controller --attach-policy-arn=arn:aws:iam::283678155577:policy/AWSLoadBalancerControllerIAMPolicy --override-existing-serviceaccounts --approve
+helm repo add eks https://aws.github.io/eks-charts
+kubectl apply -k "github.com/aws/eks-charts//stable/aws-load-balancer-controller/crds?ref=master"
+helm install aws-load-balancer-controller eks/aws-load-balancer-controller -n kube-system --set clusterName=my-cluster --set serviceAccount.create=false --set serviceAccount.name=aws-load-balancer-controller
+kubectl apply -f deployment.yaml
+kubectl apply -f service.yaml
+kubectl apply -f ingress.yaml
+added Administrator Access to eksctl-my-cluster-addon-iamserviceaccount-kub-Role1-52FvvaTYoYwQ
+needed to add tags to subnets
+  For Internet Facing
+  kubernetes.io/role/elb  1
+  kubernetes.io/cluster/my-cluster owned  
+  For private subnets
+  kubernetes.io/role/internal-elb 1
+  kubernetes.io/cluster/my-cluster owned
+
+Deleting the Cluster
+
+kubectl delete -f ingress.yaml
+kubectl delete -f service.yaml
+kubectl delete -f deployment.yaml
+helm uninstall aws-load-balancer-controller -n kube-system
+kubectl delete -k "github.com/aws/eks-charts//stable/aws-load-balancer-controller/crds?ref=master"
+eksctl delete iamserviceaccount --name aws-load-balancer-controller --namespace kube-system --cluster my-cluster
+aws iam list-policies --query 'Policies[?PolicyName==`AWSLoadBalancerControllerIAMPolicy`].Arn' --output text
+aws iam delete-policy --policy-arn arn:aws:iam::283678155577:policy/AWSLoadBalancerControllerIAMPolicy
+eksctl delete cluster --name my-cluster

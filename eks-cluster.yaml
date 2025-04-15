@@ -1,0 +1,31 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: my-cluster
+  region: us-east-1
+  version: "1.28"
+
+vpc:
+  id: "<vpc id>"
+  subnets:
+    private:
+      us-east-1a:
+        id: "<subnet>"
+      us-east-1b:
+        id: "<subnet>"
+
+managedNodeGroups:
+  - name: quantum-nodegroup
+    instanceType: t3.medium
+    desiredCapacity: 2
+    minSize: 1
+    maxSize: 2
+    privateNetworking: true
+    ssh:
+      allow: true
+      publicKeyName: instance-key
+    iam:
+      withAddonPolicies:
+        autoScaler: true
+        ebs: true
